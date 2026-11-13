@@ -21,7 +21,7 @@ def load_csv(file):
 def ask_llm(prompt):
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        st.error("Немає API-ключа. Створи файл .env за зразком .env.example і впиши туди GEMINI_API_KEY.")
+        st.error("Немає API-ключа. Створіть файл .env за зразком .env.example і впишіть туди GEMINI_API_KEY.")
         return None
     model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
     try:
@@ -37,7 +37,7 @@ def ask_llm(prompt):
     try:
         return json.loads(response.text)
     except (json.JSONDecodeError, TypeError):
-        st.error("Модель повернула невалідний JSON. Спробуй натиснути кнопку ще раз.")
+        st.error("Модель повернула невалідний JSON. Спробуйте натиснути кнопку ще раз.")
         return None
 
 
@@ -182,7 +182,7 @@ st.set_page_config(page_title="AI-асистент аналітика", layout="
 st.title("AI-асистент аналітика")
 
 st.sidebar.header("Дані")
-uploaded = st.sidebar.file_uploader("Завантаж CSV-файл", type="csv")
+uploaded = st.sidebar.file_uploader("Завантажте CSV-файл", type="csv")
 if st.sidebar.button("Використати демо-датасет"):
     st.session_state["demo"] = True
 
@@ -191,16 +191,16 @@ if uploaded is not None:
 elif st.session_state.get("demo"):
     source = "data/sample.csv"
 else:
-    st.info("Завантаж CSV у меню зліва або натисни кнопку з демо-датасетом.")
+    st.info("Завантажте CSV у меню зліва або натисніть кнопку з демо-датасетом.")
     st.stop()
 
 try:
     df = load_csv(source)
 except pd.errors.EmptyDataError:
-    st.error("Файл порожній. Завантаж CSV з даними.")
+    st.error("Файл порожній. Завантажте CSV з даними.")
     st.stop()
 except Exception:
-    st.error("Не вдалося прочитати файл як CSV. Перевір, що це справді CSV з комами між колонками.")
+    st.error("Не вдалося прочитати файл як CSV. Перевірте, що це справді CSV з комами між колонками.")
     st.stop()
 
 if df.empty:
