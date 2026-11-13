@@ -133,6 +133,51 @@ def hypotheses_prompt(df, value, groups):
 """
 
 
+def summary_metrics(df):
+    metrics = {"Рядків": len(df)}
+    if "InvoiceNo" in df.columns:
+        metrics["Замовлень"] = df["InvoiceNo"].nunique()
+    if "CustomerID" in df.columns:
+        metrics["Клієнтів"] = df["CustomerID"].nunique()
+    if "Revenue" in df.columns:
+        revenue = df["Revenue"].sum()
+        metrics["Виручка"] = round(revenue, 2)
+        metrics["Сума повернень"] = round(-df.loc[df["Revenue"] < 0, "Revenue"].sum(), 2)
+        if "InvoiceNo" in df.columns:
+            metrics["Середній чек"] = round(revenue / df["InvoiceNo"].nunique(), 2)
+        if "Country" in df.columns:
+            by_country = df.groupby("Country")["Revenue"].sum()
+            metrics["Топ-країна"] = by_country.idxmax()
+            metrics["Частка топ-країни у виручці, %"] = round(by_country.max() / revenue * 100, 1)
+        if "Month" in df.columns:
+            by_month = df.groupby("Month")["Revenue"].sum()
+            metrics["Найкращий місяць"] = by_month.idxmax()
+            metrics["Виручка в найкращому місяці"] = round(by_month.max(), 2)
+            metrics["Найгірший місяць"] = by_month.idxmin()
+            metrics["Виручка в найгіршому місяці"] = round(by_month.min(), 2)
+    return metrics
+
+
+def summary_prompt(metrics):
+    text = "\n".join(f"{k}: {v}" for k, v in metrics.items())
+    return f"""Ти аналітик, який готує короткий звіт для керівника. Нижче ключові метрики, які вже пораховані в pandas.
+Напиши executive summary українською мовою, простими словами, без жаргону.
+
+Правила:
+- використовуй тільки числа з метрик нижче
+- не рахуй нові числа сам (відсотки, різниці, середні) і нічого не вигадуй
+- пиши коротко, керівник читає це за хвилину
+
+Метрики:
+{text}
+
+Поверни JSON такого вигляду:
+{{"what_happened": "2-3 речення про те, що сталося",
+ "why_important": "1-2 речення, чому це важливо для бізнесу",
+ "next_steps": ["конкретна дія 1", "конкретна дія 2", "конкретна дія 3"]}}
+"""
+
+
 st.set_page_config(page_title="AI-асистент аналітика", layout="wide")
 st.title("AI-асистент аналітика")
 
@@ -207,4 +252,15 @@ with tab_hyp:
             st.markdown(f"**{i}. {h.get('hypothesis', '')}**  \nЦифра: {h.get('evidence', '')}  \nЯк перевірити: {h.get('check', '')}")
 
 with tab_sum:
-    st.write("Тут буде короткий звіт для керівника.")
+    metrics = summary_metrics(data)
+    st.dataframe(pd.DataFrame({"метрика": list(metrics.keys()), "значення": [str(v) for v in metrics.values()]}), hide_index=True)
+    if st.button("Написати summary", key="sum_button"):
+        st.session_state["sum"] = ask_llm(summary_prompt(metrics))
+    result = st.session_state.get("sum")
+    if result:
+        st.subheader("Executive summary")
+        st.markdown(f"**Що сталося.** {result.get('what_happened', '')}")
+        st.markdown(f"**Чому це важливо.** {result.get('why_important', '')}")
+        st.markdown("**Що робити далі:**")
+        for step in result.get("next_steps", []):
+            st.markdown(f"- {step}")
