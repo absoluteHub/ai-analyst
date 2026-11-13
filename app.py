@@ -81,6 +81,58 @@ def eda_prompt(df, table, describe, duplicates):
 """
 
 
+def add_columns(df):
+    df = df.copy()
+    if "Quantity" in df.columns and "UnitPrice" in df.columns:
+        df["Revenue"] = pd.to_numeric(df["Quantity"], errors="coerce") * pd.to_numeric(df["UnitPrice"], errors="coerce")
+    if "InvoiceDate" in df.columns:
+        df["Month"] = pd.to_datetime(df["InvoiceDate"], errors="coerce").dt.strftime("%Y-%m")
+    return df
+
+
+def group_stats(df):
+    numeric = df.select_dtypes("number")
+    value = "Revenue" if "Revenue" in df.columns else (numeric.columns[0] if len(numeric.columns) else None)
+    groups = {}
+    for col in df.columns:
+        if pd.api.types.is_numeric_dtype(df[col]):
+            continue
+        if col != "Month" and not 2 <= df[col].nunique() <= 40:
+            continue
+        if value:
+            g = df.groupby(col)[value].agg(["sum", "count", "mean"]).round(2)
+            g.columns = ["сума", "рядків", "середнє"]
+        else:
+            g = df.groupby(col).size().to_frame("рядків")
+        g = g.sort_index() if col == "Month" else g.sort_values(g.columns[0], ascending=False).head(10)
+        groups[col] = g
+    return value, groups
+
+
+def hypotheses_prompt(df, value, groups):
+    describe = df.select_dtypes("number").describe().T.round(2).to_string()
+    text = "\n\n".join(f"Групування за {col}:\n{g.to_string()}" for col, g in groups.items())
+    return f"""Ти аналітик даних. Нижче статистики датасету, які вже пораховані в pandas.
+Запропонуй від 5 до 7 гіпотез, які варто перевірити. Пиши українською мовою.
+
+Правила:
+- кожна гіпотеза обов'язково спирається на конкретну цифру з даних нижче
+- бери числа точно з таблиць, нічого не рахуй сам і не вигадуй
+- не повторюй одну й ту саму думку різними словами
+
+Рядків: {len(df)}
+Основна числова колонка: {value}
+
+Статистики числових колонок:
+{describe}
+
+{text}
+
+Поверни JSON такого вигляду:
+{{"hypotheses": [{{"hypothesis": "формулювання гіпотези", "evidence": "цифра з даних, на яку вона спирається", "check": "як її перевірити"}}]}}
+"""
+
+
 st.set_page_config(page_title="AI-асистент аналітика", layout="wide")
 st.title("AI-асистент аналітика")
 
@@ -132,8 +184,27 @@ with tab_eda:
         for p in result.get("problems", []):
             st.markdown(f"- **{p.get('column', '')}**: {p.get('problem', '')} Рекомендація: {p.get('recommendation', '')}")
 
+data = add_columns(df)
+
 with tab_hyp:
-    st.write("Тут будуть гіпотези.")
+    value, groups = group_stats(data)
+    if not groups:
+        st.write("Не знайшлося текстових колонок, за якими можна згрупувати дані.")
+    for col, g in groups.items():
+        st.write(f"Групування за {col}" + (f" (колонка {value})" if value else ""))
+        left, right = st.columns(2)
+        left.dataframe(g)
+        if col == "Month":
+            right.line_chart(g[g.columns[0]])
+        else:
+            right.bar_chart(g[g.columns[0]])
+    if st.button("Згенерувати гіпотези", key="hyp_button"):
+        st.session_state["hyp"] = ask_llm(hypotheses_prompt(data, value, groups))
+    result = st.session_state.get("hyp")
+    if result:
+        st.subheader("Гіпотези від AI")
+        for i, h in enumerate(result.get("hypotheses", []), 1):
+            st.markdown(f"**{i}. {h.get('hypothesis', '')}**  \nЦифра: {h.get('evidence', '')}  \nЯк перевірити: {h.get('check', '')}")
 
 with tab_sum:
     st.write("Тут буде короткий звіт для керівника.")
