@@ -23,7 +23,7 @@ def ask_llm(prompt):
     if not api_key:
         st.error("Немає API-ключа. Створіть файл .env за зразком .env.example і впишіть туди GEMINI_API_KEY.")
         return None
-    model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+    model = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
