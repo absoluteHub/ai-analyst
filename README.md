@@ -12,19 +12,19 @@
 
 **EDA.** Таблиця з типами колонок, пропусками, від'ємними і нульовими значеннями, яку рахує pandas.
 
-![EDA](screenshots/eda.png)
+![EDA](screenshots/eda1.png)
 
 Під таблицею висновки AI про якість даних. Цифри в тексті ті самі, що в таблиці вище.
 
-![Висновки AI](screenshots/eda_ai.png)
+![Висновки AI](screenshots/eda2.png)
 
 **Гіпотези.** Групування за країнами і місяцями з графіками.
 
-![Групування](screenshots/hypotheses.png)
+![Групування](screenshots/hypotheses1.png)
 
 Під ними гіпотези від AI. Кожна гіпотеза спирається на цифру з таблиць.
 
-![Гіпотези від AI](screenshots/hypotheses_ai.png)
+![Гіпотези від AI](screenshots/hypotheses2.png)
 
 **Executive summary.** Ключові метрики і короткий звіт: що сталося, чому це важливо, що робити далі.
 
